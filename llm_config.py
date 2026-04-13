@@ -1,8 +1,6 @@
-"""LLM configuration helpers.
-
-This project is designed to work with local LLMs via Ollama by default.
-CrewAI is explicitly configured with a local OpenAI-compatible base URL,
-so it won't fall back to a cloud model name like 'gpt-4.1-mini'.
+"""LLM configuration for CrewAI.
+CrewAI is configured to talk to Ollama via its OpenAI-compatible endpoint
+(default: http://localhost:11434/v1).
 """
 
 from __future__ import annotations
@@ -28,52 +26,42 @@ def _looks_like_local_url(url: str) -> bool:
 
 
 def get_crewai_llm() -> LLM:
-    """Return a CrewAI LLM configured for either Ollama (local) or OpenAI.
+    """Return a CrewAI LLM configured for local Ollama.
 
-    Rules:
-    - If USE_LOCAL_LLM/USE_OLLAMA is true OR OLLAMA_MODEL is set OR no OPENAI_API_KEY
-      is set, default to Ollama at http://localhost:11434/v1.
-    - Otherwise, assume the user wants their cloud OpenAI config.
+    This repository intentionally does NOT support cloud OpenAI usage.
+
+    Environment variables:
+    - OLLAMA_MODEL: model name installed in Ollama (default: llama3)
+    - OLLAMA_BASE_URL / OPENAI_API_BASE / OPENAI_BASE_URL: OpenAI-compatible base URL
+      (default: http://localhost:11434/v1)
+    - OPENAI_API_KEY: optional; use "ollama" for local setups
+
+    Raises:
+        RuntimeError: if the base URL is not local (localhost/127.0.0.1).
     """
 
-    use_local = (
-        _is_truthy(os.getenv("USE_LOCAL_LLM"))
-        or _is_truthy(os.getenv("USE_OLLAMA"))
-        or bool(os.getenv("OLLAMA_MODEL"))
-        or not bool(os.getenv("OPENAI_API_KEY"))
+    model = os.getenv("OLLAMA_MODEL", "llama3")
+    base_url = (
+        os.getenv("OLLAMA_BASE_URL")
+        or os.getenv("OPENAI_API_BASE")
+        or os.getenv("OPENAI_BASE_URL")
+        or "http://localhost:11434/v1"
     )
+    api_key = os.getenv("OPENAI_API_KEY") or "ollama"
 
-    if use_local:
-        model = os.getenv("OLLAMA_MODEL", "llama3")
-        base_url = (
-            os.getenv("OLLAMA_BASE_URL")
-            or os.getenv("OPENAI_API_BASE")
-            or os.getenv("OPENAI_BASE_URL")
-            or "http://localhost:11434/v1"
+    if base_url and not _looks_like_local_url(base_url):
+        raise RuntimeError(
+            "This project is configured for local Ollama only. "
+            f"Refusing non-local base URL: {base_url}. "
+            "Set OLLAMA_BASE_URL/OPENAI_API_BASE to http://localhost:11434/v1."
         )
-        api_key = os.getenv("OPENAI_API_KEY") or "ollama"
 
-        # If a user accidentally points at a non-local base URL while intending
-        # local execution, keep it safe by forcing localhost.
-        if base_url and not _looks_like_local_url(base_url):
-            base_url = "http://localhost:11434/v1"
-
-        return LLM(model=model, base_url=base_url, api_key=api_key, provider="openai")
-
-    # Cloud/OpenAI path: rely on the user's environment/provider config.
-    # We intentionally do not guess a model here.
-    model = os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_MODEL_NAME") or "gpt-4o-mini"
-    return LLM(model=model, api_key=os.getenv("OPENAI_API_KEY"), provider="openai")
+    return LLM(model=model, base_url=base_url, api_key=api_key, provider="openai")
 
 
 def is_using_local_llm() -> bool:
-        """Return True when this project is configured to use Ollama/local LLMs."""
-        return (
-                _is_truthy(os.getenv("USE_LOCAL_LLM"))
-                or _is_truthy(os.getenv("USE_OLLAMA"))
-                or bool(os.getenv("OLLAMA_MODEL"))
-                or not bool(os.getenv("OPENAI_API_KEY"))
-        )
+    """Return True (this project is Ollama-only by design)."""
+    return True
 
 
 def crewai_tool_calls_enabled() -> bool:

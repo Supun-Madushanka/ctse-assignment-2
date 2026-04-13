@@ -8,8 +8,8 @@ News Summarizer Multi‑Agent System (MAS):
 ## Prerequisites
 
 - Python 3.10+ (3.11 recommended)
-- A NewsAPI key (https://newsapi.org) exported as an environment variable
-- An LLM configured for CrewAI (either OpenAI, or a local Ollama model via an OpenAI-compatible endpoint)
+- A NewsAPI key (https://newsapi.org) exported as an environment variable (free tier)
+- Ollama installed and running locally (this assignment prohibits paid/cloud LLM APIs)
 
 ## Step-by-step: Run on Windows (PowerShell)
 
@@ -49,26 +49,20 @@ Close/reopen the terminal after using `setx`.
 
 #### 4.2) LLM for CrewAI (required)
 
-This project uses CrewAI agents. CrewAI needs an LLM provider to run the agents.
+This project uses CrewAI agents, configured to run **locally with Ollama only**.
 
-Choose ONE option:
+1) Install Ollama and start it.
 
-**Option A — OpenAI (cloud)**
+2) Choose a model and pull it.
 
-```powershell
-$env:OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"
-```
+Recommended (better for tool/function calling and structured output):
+- `llama3.1:8b-instruct`
+- `qwen2.5:7b-instruct`
 
-**Option B — Ollama (local)**
-
-1) Install Ollama and start it
-2) Choose a model
-
-- This project defaults to `llama3`, but you can use any Ollama model you have installed (e.g. `gemma3:1b`).
-- Set it via `OLLAMA_MODEL`.
+Example:
 
 ```powershell
-$env:OLLAMA_MODEL = "gemma3:1b"
+$env:OLLAMA_MODEL = "llama3.1:8b-instruct"
 ollama pull $env:OLLAMA_MODEL
 ```
 
@@ -79,12 +73,17 @@ $env:OPENAI_API_BASE = "http://localhost:11434/v1"
 $env:OPENAI_API_KEY = "ollama"
 ```
 
+4) (Optional) Enable CrewAI tool-calling in local mode:
+
+Some Ollama models reject OpenAI-style `tools` payloads. If you see an error like
+"does not support tools", switch models.
+
+```powershell
+$env:CREWAI_LOCAL_TOOL_CALLS = "true"
+```
+
 Notes:
 - Depending on your CrewAI/LiteLLM version, you may need `OPENAI_BASE_URL` instead of `OPENAI_API_BASE`.
-- If CrewAI still tries the wrong model, set your model explicitly in your environment/provider config (var names differ by version).
-- Some Ollama models do **not** support OpenAI-style tool calling. If you see an error like "does not support tools", either:
-	- Use a tool-capable model, and enable local tool calls with `CREWAI_LOCAL_TOOL_CALLS=true`, or
-	- Keep your current model and let the project use its built-in direct Python fallbacks (default behavior).
 
 ### 5) Run the pipeline
 
